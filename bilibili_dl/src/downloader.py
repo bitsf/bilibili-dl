@@ -9,7 +9,7 @@ from .utils import ProgressBar, send_request
 from .Video import Video
 
 
-def download(videos: List[Video], is_audio_only: bool):
+def download(videos: List[Video], is_audio_only: bool, merge_cover: bool=True):
     for video in videos:
 
         params = {'bvid': video.bvid, 'cid': video.cid}
@@ -61,30 +61,33 @@ def download(videos: List[Video], is_audio_only: bool):
             urllib.request.install_opener(opener)
             # 下载音频和封面
             urllib.request.urlretrieve(download_url, raw_fname, ProgressBar())
-            urllib.request.urlretrieve(video.cover_url, cover_fname)
-            # 添加封面到音频上
-            print(f'[ffmpeg] 正在合并封面中...')
-            if is_audio_only:
-                subprocess.call(
-                    f'ffmpeg -i "{raw_fname}" -i "{cover_fname}"                 \
-                                         -loglevel error                         \
-                                         -map 0:0 -map 1:0                       \
-                                         -metadata album="{title}"               \
-                                         -metadata artist="{video.up_name}"      \
-                                         -metadata:s:v title="Album cover"       \
-                                         -metadata:s:v comment="Cover (Front)"   \
-                                         -id3v2_version 3 -write_id3v1 1 "{final_fname}"',
-                    shell=True,
-                )
+            if merge_cover:
+                urllib.request.urlretrieve(video.cover_url, cover_fname)
+                # 添加封面到音频上
+                print(f'[ffmpeg] 正在合并封面中...')
+                if is_audio_only:
+                    subprocess.call(
+                        f'ffmpeg -i "{raw_fname}" -i "{cover_fname}"                 \
+                                            -loglevel error                         \
+                                            -map 0:0 -map 1:0                       \
+                                            -metadata album="{title}"               \
+                                            -metadata artist="{video.up_name}"      \
+                                            -metadata:s:v title="Album cover"       \
+                                            -metadata:s:v comment="Cover (Front)"   \
+                                            -id3v2_version 3 -write_id3v1 1 "{final_fname}"',
+                        shell=True,
+                    )
+                else:
+                    subprocess.call(
+                        f'ffmpeg -i "{raw_fname}" -i "{cover_fname}"                 \
+                                            -loglevel error                         \
+                                            -map 1 -map 0                           \
+                                            -c copy                                 \
+                                            -disposition:0 attached_pic "{final_fname}"',
+                        shell=True,
+                    )
+                os.remove(cover_fname)
+                os.remove(raw_fname)
             else:
-                subprocess.call(
-                    f'ffmpeg -i "{raw_fname}" -i "{cover_fname}"                 \
-                                         -loglevel error                         \
-                                         -map 1 -map 0                           \
-                                         -c copy                                 \
-                                         -disposition:0 attached_pic "{final_fname}"',
-                    shell=True,
-                )
-            os.remove(raw_fname)
-            os.remove(cover_fname)
+                os.rename(raw_fname, final_fname)
             print(f'[bilibili-dl] ✅ 下载完成: {os.path.abspath(final_fname)}')

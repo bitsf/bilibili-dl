@@ -13,6 +13,7 @@ def get_args():
     parser.add_argument('bvid', nargs='?', help='BV号')
     parser.add_argument('--mid', help='up主id')
     parser.add_argument('--audio-only', '-a', action=BooleanOptionalAction, default=False, help='仅下载音频 (default: False)')
+    parser.add_argument('--merge-cover', action=BooleanOptionalAction, default=True, help='合并封面 (default: True)')
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -25,6 +26,7 @@ def main(args):
     bvid = args.bvid
     mid = args.mid
     is_audio_only = args.audio_only
+    merge_cover = args.merge_cover
 
     # 获取要下载视频的BV号
     bvids = []
@@ -46,7 +48,7 @@ def main(args):
     videos = get_videos_by_bvids(bvids)
 
     # 开始下载！
-    download(videos, is_audio_only)
+    download(videos, is_audio_only, merge_cover)
 
 
 if __name__ == '__main__':
